@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>E-Commerce Returns DApp</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+  <div class="container mx-auto p-4 max-w-4xl">
+    <h1 class="text-3xl font-bold text-center mb-6">E-Commerce Returns Management</h1>
+
+    <!-- Wallet Connect -->
+    <div class="text-center mb-6">
+      <button id="connectWallet" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+        Connect MetaMask
+      </button>
+      <p id="walletStatus" class="mt-2 text-gray-700">Wallet not connected</p>
+    </div>
+
+    <!-- Initiate Return -->
+    <div class="bg-white p-6 rounded shadow mb-6">
+      <h2 class="text-xl font-semibold mb-4">Initiate Return</h2>
+      <input id="orderId" type="number" placeholder="Order ID" class="border p-2 mb-2 w-full" />
+      <input id="itemId" type="number" placeholder="Item ID" class="border p-2 mb-2 w-full" />
+      <input id="refundAmount" type="number" step="any" placeholder="Refund Amount (tokens)" class="border p-2 mb-2 w-full" />
+      <input id="trackingNumber" type="text" placeholder="Tracking Number" class="border p-2 mb-2 w-full" />
+      <button id="initiateReturn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">Submit Return</button>
+    </div>
+
+    <!-- Check Return -->
+    <div class="bg-white p-6 rounded shadow mb-6">
+      <h2 class="text-xl font-semibold mb-4">Check Return</h2>
+      <input id="returnIdInput" type="text" placeholder="Return ID (0x...)" class="border p-2 mb-2 w-full" />
+      <button id="checkReturn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">Check</button>
+      <div id="returnDetails" class="mt-4 text-gray-800"></div>
+    </div>
+
+    <!-- Admin Actions -->
+    <div class="bg-white p-6 rounded shadow">
+      <h2 class="text-xl font-semibold mb-4">Admin Actions (Owner Only)</h2>
+      <input id="adminReturnId" type="text" placeholder="Return ID (0x...)" class="border p-2 mb-2 w-full" />
+      <button id="markReceived" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded mr-2">Mark Received</button>
+      <button id="processRefund" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded mr-2">Process Refund</button>
+      <button id="rejectReturn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">Reject Return</button>
+    </div>
+  </div>
+
+  <!-- ✅ MetaMask Sepolia Network + Wallet Connect -->
+  <script>
+    const expectedChainId = "0xaa36a7"; // Sepolia (11155111)
+    const sepoliaParams = {
+      chainId: expectedChainId,
+      chainName: "Sepolia Test Network",
+      nativeCurrency: { name: "SepoliaETH", symbol: "ETH", decimals: 18 },
+      rpcUrls: ["https://rpc.sepolia.org"],
+      blockExplorerUrls: ["https://sepolia.etherscan.io"],
+    };
+
+    let web3;
+    let userAccount;
+
+    async function connectWallet() {
+      if (typeof window.ethereum === "undefined") {
+        alert("🦊 Please install MetaMask to use this DApp.");
+        return;
+      }
+
+      try {
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        userAccount = accounts[0];
+        web3 = new Web3(window.ethereum);
+
+        const currentChainId = await window.ethereum.request({ method: "eth_chainId" });
+
+        // If not Sepolia, switch/add network
+        if (currentChainId !== expectedChainId) {
+          try {
+            await window.ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: expectedChainId }],
+            });
+            console.log("✅ Switched to Sepolia network.");
+          } catch (switchError) {
+            if (switchError.code === 4902) {
+              await window.ethereum.request({
+                method: "wallet_addEthereumChain",
+                params: [sepoliaParams],
+              });
+              console.log("✅ Added Sepolia network.");
+            } else {
+              alert("Please switch MetaMask to Sepolia Testnet.");
+              return;
+            }
+          }
+        }
+
+        document.getElementById("walletStatus").innerText =
+          `Connected: ${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
+        document.getElementById("connectWallet").innerText = "Connected";
+        document.getElementById("connectWallet").disabled = true;
+
+        window.ethereum.on("accountsChanged", (accounts) => {
+          if (accounts.length > 0) {
+            userAccount = accounts[0];
+            document.getElementById("walletStatus").innerText =
+              `Connected: ${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
+          } else {
+            document.getElementById("walletStatus").innerText = "Wallet not connected";
+            document.getElementById("connectWallet").disabled = false;
+          }
+        });
+
+        window.ethereum.on("chainChanged", () => window.location.reload());
+
+      } catch (err) {
+        console.error("MetaMask connection failed:", err);
+        alert("⚠️ MetaMask connection failed. Check console for details.");
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const connectButton = document.getElementById("connectWallet");
+      if (connectButton) connectButton.addEventListener("click", connectWallet);
+    });
+  </script>
+
+  <!-- ✅ Smart Contract Logic -->
+  <script>
+    const contractAddress = "0x675De888122e0834d84101Dd44A3C02AE4462060"; // your deployed contract
+    const contractABI = [/* your ABI goes here (unchanged) */];
+
+    let contract;
+
+    const statusMap = [
+      "Initiated", "ShippedBack", "ReceivedBySeller",
+      "RefundProcessed", "Rejected", "Cancelled"
+    ];
+
+    async function initContract() {
+      if (!web3 || !userAccount) {
+        alert("⚠️ Connect MetaMask first.");
+        return;
+      }
+      contract = new web3.eth.Contract(contractABI, contractAddress);
+    }
+
+    async function initiateReturn() {
+      await initContract();
+      const orderId = document.getElementById("orderId").value;
+      const itemId = document.getElementById("itemId").value;
+      const refundAmountEth = document.getElementById("refundAmount").value;
+      const refundAmount = web3.utils.toWei(refundAmountEth, "ether");
+      const trackingNumber = document.getElementById("trackingNumber").value;
+
+      try {
+        const tx = await contract.methods
+          .initiateReturn(orderId, itemId, refundAmount, trackingNumber)
+          .send({ from: userAccount });
+
+        const returnId = tx.events?.ReturnInitiated?.returnValues?.returnId;
+        alert(returnId ? `✅ Return initiated. ID: ${returnId}` : "Return initiated, ID not found.");
+      } catch (e) {
+        console.error(e);
+        alert("Error initiating return");
+      }
+    }
+
+    async function checkReturn() {
+      await initContract();
+      const returnId = document.getElementById("returnIdInput").value;
+      try {
+        const data = await contract.methods.getReturnRequestDetails(returnId).call();
+        const html = `
+          <p><strong>Buyer:</strong> ${data.buyer}</p>
+          <p><strong>Order ID:</strong> ${data.orderId}</p>
+          <p><strong>Item ID:</strong> ${data.itemId}</p>
+          <p><strong>Refund:</strong> ${web3.utils.fromWei(data.refundAmount, "ether")} tokens</p>
+          <p><strong>Status:</strong> ${statusMap[data.status]}</p>
+          <p><strong>Tracking:</strong> ${data.trackingNumber}</p>
+          <p><strong>Initiated:</strong> ${new Date(data.initiatedTimestamp * 1000).toLocaleString()}</p>
+        `;
+        document.getElementById("returnDetails").innerHTML = html;
+      } catch (err) {
+        console.error(err);
+        alert("❌ Invalid return ID or fetch failed.");
+      }
+    }
+
+    async function markItemReceived() {
+      await initContract();
+      const returnId = document.getElementById("adminReturnId").value;
+      try {
+        await contract.methods.markItemReceived(returnId).send({ from: userAccount });
+        alert("✅ Item marked as received.");
+      } catch (e) {
+        console.error(e);
+        alert("Error marking item received.");
+      }
+    }
+
+    async function processRefund() {
+      await initContract();
+      const returnId = document.getElementById("adminReturnId").value;
+      try {
+        await contract.methods.processRefund(returnId).send({ from: userAccount });
+        alert("✅ Refund processed.");
+      } catch (e) {
+        console.error(e);
+        alert("Error processing refund.");
+      }
+    }
+
+    async function rejectReturn() {
+      await initContract();
+      const returnId = document.getElementById("adminReturnId").value;
+      try {
+        await contract.methods.rejectReturn(returnId).send({ from: userAccount });
+        alert("❌ Return rejected.");
+      } catch (e) {
+        console.error(e);
+        alert("Error rejecting return.");
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("initiateReturn").addEventListener("click", initiateReturn);
+      document.getElementById("checkReturn").addEventListener("click", checkReturn);
+      document.getElementById("markReceived").addEventListener("click", markItemReceived);
+      document.getElementById("processRefund").addEventListener("click", processRefund);
+      document.getElementById("rejectReturn").addEventListener("click", rejectReturn);
+    });
+  </script>
+</body>
+</html>
