@@ -47,90 +47,371 @@
     </div>
   </div>
 
-  <!-- ✅ MetaMask Sepolia Network + Wallet Connect -->
   <script>
-    const expectedChainId = "0xaa36a7"; // Sepolia (11155111)
-    const sepoliaParams = {
-      chainId: expectedChainId,
-      chainName: "Sepolia Test Network",
-      nativeCurrency: { name: "SepoliaETH", symbol: "ETH", decimals: 18 },
-      rpcUrls: ["https://rpc.sepolia.org"],
-      blockExplorerUrls: ["https://sepolia.etherscan.io"],
-    };
+    const contractAddress = "0x675De888122e0834d84101Dd44A3C02AE4462060"; // Replace with your deployed contract address
+    const expectedChainId = "0xaa36a7"; // Sepolia testnet
+    const contractABI = [
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "_returnId",
+				"type": "bytes32"
+			}
+		],
+		"name": "cancelReturn",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_orderId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_itemId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_refundAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "_trackingNumber",
+				"type": "string"
+			}
+		],
+		"name": "initiateReturn",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "_returnId",
+				"type": "bytes32"
+			}
+		],
+		"name": "markItemReceived",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_refundTokenAddress",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_initialOwner",
+				"type": "address"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			}
+		],
+		"name": "OwnableInvalidOwner",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "account",
+				"type": "address"
+			}
+		],
+		"name": "OwnableUnauthorizedAccount",
+		"type": "error"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "previousOwner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "newOwner",
+				"type": "address"
+			}
+		],
+		"name": "OwnershipTransferred",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "_returnId",
+				"type": "bytes32"
+			}
+		],
+		"name": "processRefund",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "bytes32",
+				"name": "returnId",
+				"type": "bytes32"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "buyer",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "RefundSent",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "_returnId",
+				"type": "bytes32"
+			}
+		],
+		"name": "rejectReturn",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "renounceOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "bytes32",
+				"name": "returnId",
+				"type": "bytes32"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "buyer",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "orderId",
+				"type": "uint256"
+			}
+		],
+		"name": "ReturnInitiated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "bytes32",
+				"name": "returnId",
+				"type": "bytes32"
+			},
+			{
+				"indexed": false,
+				"internalType": "enum ECommerceReturns.ReturnStatus",
+				"name": "newStatus",
+				"type": "uint8"
+			}
+		],
+		"name": "ReturnStatusUpdated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "bytes32",
+				"name": "returnId",
+				"type": "bytes32"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "newTrackingNumber",
+				"type": "string"
+			}
+		],
+		"name": "TrackingNumberUpdated",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "newOwner",
+				"type": "address"
+			}
+		],
+		"name": "transferOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "_returnId",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "string",
+				"name": "_newTrackingNumber",
+				"type": "string"
+			}
+		],
+		"name": "updateTrackingNumber",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "_returnId",
+				"type": "bytes32"
+			}
+		],
+		"name": "getReturnRequestDetails",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "buyer",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "orderId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "itemId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "refundAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "enum ECommerceReturns.ReturnStatus",
+				"name": "status",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "initiatedTimestamp",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "trackingNumber",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "owner",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "refundToken",
+		"outputs": [
+			{
+				"internalType": "contract IERC20",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"name": "returnExists",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+];
 
     let web3;
     let userAccount;
-
-    async function connectWallet() {
-      if (typeof window.ethereum === "undefined") {
-        alert("🦊 Please install MetaMask to use this DApp.");
-        return;
-      }
-
-      try {
-        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-        userAccount = accounts[0];
-        web3 = new Web3(window.ethereum);
-
-        const currentChainId = await window.ethereum.request({ method: "eth_chainId" });
-
-        // If not Sepolia, switch/add network
-        if (currentChainId !== expectedChainId) {
-          try {
-            await window.ethereum.request({
-              method: "wallet_switchEthereumChain",
-              params: [{ chainId: expectedChainId }],
-            });
-            console.log("✅ Switched to Sepolia network.");
-          } catch (switchError) {
-            if (switchError.code === 4902) {
-              await window.ethereum.request({
-                method: "wallet_addEthereumChain",
-                params: [sepoliaParams],
-              });
-              console.log("✅ Added Sepolia network.");
-            } else {
-              alert("Please switch MetaMask to Sepolia Testnet.");
-              return;
-            }
-          }
-        }
-
-        document.getElementById("walletStatus").innerText =
-          `Connected: ${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
-        document.getElementById("connectWallet").innerText = "Connected";
-        document.getElementById("connectWallet").disabled = true;
-
-        window.ethereum.on("accountsChanged", (accounts) => {
-          if (accounts.length > 0) {
-            userAccount = accounts[0];
-            document.getElementById("walletStatus").innerText =
-              `Connected: ${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
-          } else {
-            document.getElementById("walletStatus").innerText = "Wallet not connected";
-            document.getElementById("connectWallet").disabled = false;
-          }
-        });
-
-        window.ethereum.on("chainChanged", () => window.location.reload());
-
-      } catch (err) {
-        console.error("MetaMask connection failed:", err);
-        alert("⚠️ MetaMask connection failed. Check console for details.");
-      }
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const connectButton = document.getElementById("connectWallet");
-      if (connectButton) connectButton.addEventListener("click", connectWallet);
-    });
-  </script>
-
-  <!-- ✅ Smart Contract Logic -->
-  <script>
-    const contractAddress = "0x675De888122e0834d84101Dd44A3C02AE4462060"; // your deployed contract
-    const contractABI = [/* your ABI goes here (unchanged) */];
-
     let contract;
 
     const statusMap = [
@@ -138,20 +419,34 @@
       "RefundProcessed", "Rejected", "Cancelled"
     ];
 
-    async function initContract() {
-      if (!web3 || !userAccount) {
-        alert("⚠️ Connect MetaMask first.");
+    async function connectWallet() {
+      if (!window.ethereum) {
+        alert("Install MetaMask to use this DApp");
         return;
       }
+
+      web3 = new Web3(window.ethereum);
+      const chainId = await ethereum.request({ method: "eth_chainId" });
+      if (chainId !== expectedChainId) {
+        alert("Switch to Sepolia testnet.");
+        return;
+      }
+
+      const accounts = await ethereum.request({ method: "eth_requestAccounts" });
+      userAccount = accounts[0];
       contract = new web3.eth.Contract(contractABI, contractAddress);
+
+      document.getElementById("walletStatus").innerText =
+        `Connected: ${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
+      document.getElementById("connectWallet").innerText = "Connected";
+      document.getElementById("connectWallet").disabled = true;
     }
 
     async function initiateReturn() {
-      await initContract();
       const orderId = document.getElementById("orderId").value;
       const itemId = document.getElementById("itemId").value;
       const refundAmountEth = document.getElementById("refundAmount").value;
-      const refundAmount = web3.utils.toWei(refundAmountEth, "ether");
+      const refundAmount = web3.utils.toWei(refundAmountEth, 'ether'); // Convert to Wei
       const trackingNumber = document.getElementById("trackingNumber").value;
 
       try {
@@ -160,7 +455,12 @@
           .send({ from: userAccount });
 
         const returnId = tx.events?.ReturnInitiated?.returnValues?.returnId;
-        alert(returnId ? `✅ Return initiated. ID: ${returnId}` : "Return initiated, ID not found.");
+
+        if (returnId) {
+          alert("Return initiated. Return ID: " + returnId);
+        } else {
+          alert("Return initiated, but Return ID not found in events.");
+        }
       } catch (e) {
         console.error(e);
         alert("Error initiating return");
@@ -168,7 +468,6 @@
     }
 
     async function checkReturn() {
-      await initContract();
       const returnId = document.getElementById("returnIdInput").value;
       try {
         const data = await contract.methods.getReturnRequestDetails(returnId).call();
@@ -176,55 +475,53 @@
           <p><strong>Buyer:</strong> ${data.buyer}</p>
           <p><strong>Order ID:</strong> ${data.orderId}</p>
           <p><strong>Item ID:</strong> ${data.itemId}</p>
-          <p><strong>Refund:</strong> ${web3.utils.fromWei(data.refundAmount, "ether")} tokens</p>
+          <p><strong>Refund Amount:</strong> ${web3.utils.fromWei(data.refundAmount, 'ether')} tokens</p>
           <p><strong>Status:</strong> ${statusMap[data.status]}</p>
           <p><strong>Tracking:</strong> ${data.trackingNumber}</p>
           <p><strong>Initiated:</strong> ${new Date(data.initiatedTimestamp * 1000).toLocaleString()}</p>
         `;
         document.getElementById("returnDetails").innerHTML = html;
       } catch (err) {
+        alert("Invalid return ID or failed to fetch.");
         console.error(err);
-        alert("❌ Invalid return ID or fetch failed.");
       }
     }
 
     async function markItemReceived() {
-      await initContract();
       const returnId = document.getElementById("adminReturnId").value;
       try {
         await contract.methods.markItemReceived(returnId).send({ from: userAccount });
-        alert("✅ Item marked as received.");
+        alert("Item marked as received.");
       } catch (e) {
-        console.error(e);
         alert("Error marking item received.");
+        console.error(e);
       }
     }
 
     async function processRefund() {
-      await initContract();
       const returnId = document.getElementById("adminReturnId").value;
       try {
         await contract.methods.processRefund(returnId).send({ from: userAccount });
-        alert("✅ Refund processed.");
+        alert("Refund processed.");
       } catch (e) {
-        console.error(e);
         alert("Error processing refund.");
+        console.error(e);
       }
     }
 
     async function rejectReturn() {
-      await initContract();
       const returnId = document.getElementById("adminReturnId").value;
       try {
         await contract.methods.rejectReturn(returnId).send({ from: userAccount });
-        alert("❌ Return rejected.");
+        alert("Return rejected.");
       } catch (e) {
-        console.error(e);
         alert("Error rejecting return.");
+        console.error(e);
       }
     }
 
     document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("connectWallet").addEventListener("click", connectWallet);
       document.getElementById("initiateReturn").addEventListener("click", initiateReturn);
       document.getElementById("checkReturn").addEventListener("click", checkReturn);
       document.getElementById("markReceived").addEventListener("click", markItemReceived);
